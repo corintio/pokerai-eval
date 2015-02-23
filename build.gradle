@@ -1,0 +1,102 @@
+apply plugin: 'groovy'
+apply plugin: 'maven'
+apply plugin: 'idea'
+
+group = 'org.pokerai'
+version = '1.0'
+
+repositories {
+    mavenLocal()
+    jcenter()
+    mavenCentral()
+    maven { url repoForMeerkat }
+}
+
+dependencies {
+    compile 'com.biotools.meerkat:meerkat-api:2.5'
+    testCompile 'junit:junit:4.11'
+}
+
+idea {
+    project {
+        jdkName = '1.7'
+    }
+    module {
+        name = 'pokerai-eval'
+        excludeDirs += [file('gradle'), file('.idea')]
+        inheritOutputDirs = false
+        outputDir = file("$buildDir/classes/main/")
+        downloadJavadoc = false
+        downloadSources = true
+    }
+}
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+artifacts {
+    archives sourcesJar, javadocJar
+}
+
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:0.5'
+    }
+}
+
+apply plugin: 'maven-publish'
+apply plugin: 'com.jfrog.bintray'
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+
+            artifact sourcesJar {
+                classifier "sources"
+            }
+
+            artifact javadocJar {
+                classifier "javadoc"
+            }
+
+            pom.withXml {
+                asNode().dependencies.'*'.findAll() {
+                    it.scope.text() == 'runtime' && project.configurations.compile.allDependencies.find { dep ->
+                        dep.name == it.artifactId.text()
+                    }
+                }.each() {
+                    it.scope*.value = 'compile'
+                }
+            }
+        }
+    }
+}
+
+
+bintray {
+     user = bintrayUser
+     key = bintrayKey
+     publications = ['mavenJava']
+     pkg {
+         repo = bintrayRepo
+         name = 'pokerai-eval'
+         desc = 'Code from contest for Java 7-Card Poker Hand Evaluators, held by Indiana in 2007'
+         // licenses = ['GPL-2.0']
+         labels = ['poker']
+         publicDownloadNumbers = true
+
+         websiteUrl = 'http://www.poker-ai.org/phpbb/viewtopic.php?f=24&t=2390'
+         vcsUrl = 'https://github.com/corintio/pokerai-eval.git'
+     }
+}

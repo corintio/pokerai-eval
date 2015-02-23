@@ -1,0 +1,10 @@
+build
+.DS_Store
+.idea
+*.iml
+*.iws
+.gradle
+*handRanks.ser
+*HandRanks.dat
+
+gradle.properties

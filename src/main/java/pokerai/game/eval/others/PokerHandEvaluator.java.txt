@@ -1,0 +1,333 @@
+/**
+ * class PokerHandEvaluator
+ * Evaluates a 7 card poker hand by checking if it contains a
+ * STRAIGHT_FLUSH, FOUR_OF_A_KIND, FULL_HOUSE, FLUSH, STRAIGHT, THREE_OF_A_KIND,
+ * TWO_PAIR, PAIR, or just a HIGH_CARD. It also specifies a "has" method for each
+ * type of hand (except HIGH_CARD).
+ * 
+ * @author Prof. Lew Hitchner
+ * @version WINTER 2006 - 5 card version
+ * @author Prof. Julie Hatalsky, http://www.csc.calpoly.edu/~jhatalsk/102/Project05/PokerHandEvaluator.java
+ * @version SPRING 2007 - updated to a 7 card version
+ */
+
+public class PokerHandEvaluator
+{
+    // class constants
+    public static final int HIGH_CARD = 0;
+    public static final int PAIR = 1;
+    public static final int TWO_PAIR = 2;
+    public static final int THREE_OF_A_KIND = 3;
+    public static final int STRAIGHT = 4;
+    public static final int FLUSH = 5;
+    public static final int FULL_HOUSE = 6;
+    public static final int FOUR_OF_A_KIND = 7;
+    public static final int STRAIGHT_FLUSH = 8;
+    
+    private static final String[]
+            handValueStrings = {"high card", "pair", "two pair", "3 of a kind",
+                                "straight", "flush", "full house", "4 of a kind",
+                                "straight flush"};
+    
+    // instance variables
+    private PokerHand hand;
+    private int[] cardCounts;
+    private int[] suitCounts;
+    private int[][] suitRankCounts;
+    private int handValue;
+    private int flushSuit;
+
+	/**
+	 * Constructor for objects of class PokerHandEvaluator
+	 * 
+	 * @param  hand  the PokerHand to be evaluated
+	 */
+	public PokerHandEvaluator(PokerHand hand)
+	{
+	    this.hand = hand;
+	    this.cardCounts = countCardsByRank();
+	    this.suitCounts = countCardsBySuit();
+	    this.suitRankCounts = countCardsBySuitRank();
+	    this.handValue = evaluateHand();
+	}
+
+    /**
+     * This method evaluates a 5-card poker hand.  
+     * Assuming no wild cards, the possibilities are (listed in
+     * decreasing order):
+     * Straight flush - a hand that contains both a straight and 
+     *        a flush (definitions below)
+     * Four-of-a-kind - four cards with the same rank
+     * Full house - three-of-a-kind and a pair
+     * Flush - five cards of the same suit
+     * Straight - five cards of consecutive rank.  The lowest 
+     *        straight is Ace-2-3-4-5 and the highest straight
+     *        is 10-Jack-Queen-King-Ace
+     * Three-of-a-kind - three cards with the same rank
+     * Two pair - pretty obvious
+     * Pair - two cards with the same rank
+     * High card - the hand has none of the above combinations
+     *
+     * @return the highest hand type for this hand,
+     *         one of the class hand type field constants:
+     *         STRAIGHT_FLUSH, FOUR_OF_A_KIND, FULL_HOUSE, FLUSH, STRAIGHT, 
+     *         THREE_OF_A_KIND, TWO_PAIR, PAIR, or HIGH_CARD.
+     */
+    private int evaluateHand() {
+        
+        if (hasStraightFlush()) return STRAIGHT_FLUSH;
+        if (hasFourOfAKind()) return FOUR_OF_A_KIND;
+        if (hasFullHouse()) return FULL_HOUSE;
+        if (hasFlush()) return FLUSH;
+        if (hasStraight()) return STRAIGHT;
+        if (hasThreeOfAKind()) return THREE_OF_A_KIND;
+        if (hasTwoPair()) return TWO_PAIR;
+        if (hasPair()) return PAIR;
+        
+        return HIGH_CARD;
+    }
+
+    /**
+     * Return this Hand's evaluated value.
+     *
+     * @return hand value
+     */
+    public int handValue()
+    {
+        return this.handValue;
+    }
+
+    /**
+     * Return this Hand's evaluated value as a String description.
+     *
+     * @return hand value String
+     */
+    public String handValueToString()
+    {
+        return handValueStrings[this.handValue];
+    }
+
+    // Note: the following "has" predicate methods are implemented as if the meaning
+    // of their return value were "is".  For example, the "hasPair" method returns
+    // true if and only if the hand has one pair, and it would return false if the hand
+    // contains 3-of-a-kind, 4-of-a-kind, 2 pair, or a full house.  The specification
+    // for hasPair should state that it returns true for a hand that "contains" a pair even
+    // if the hand's pair is part of some other higher value grouping of cards.  So,
+    // strictly speaking, all these methods should be named isPair, etc.  To implement
+    // a strict spec for hasPair would require a postcondition such as:
+    //   @ensure hand contains 2 cards with the same rank && hand does not contain 3 of
+    //           a kind, 4 of a kind, 2 pair, or a full house.
+    // But, those are much more complex postconditions to meet.  Also, because of the
+    // way evaluateHand uses the "has" methods, it will produce correct postconditions
+    // regardless of whether the "has" methods are implemented as "has a" or "is a".
+
+
+    /**
+     * Test if this hand contains a straight flush.
+     *
+     * @return true if this hand contains a straight flush.
+     */
+    public boolean hasStraightFlush()
+    {
+        boolean result = false;
+        
+        if (hasFlush()) {
+           // check for straights starting with Ace low through Ace high
+           for (int rank = 1; ! result && rank < cardCounts.length - 5; rank++)
+           {
+               if (suitRankCounts[flushSuit][rank] >= 1)
+                   result = (suitRankCounts[flushSuit][rank+1] >= 1 && suitRankCounts[flushSuit][rank+2] >= 1 &&
+                             suitRankCounts[flushSuit][rank+3] >= 1 && suitRankCounts[flushSuit][rank+4] >= 1);
+           }
+        }   
+        return result;
+    }
+    
+    /**
+     * Test if this hand contains a full house.
+     *
+     * @return true if this hand contains a full house.
+     */
+    public boolean hasFullHouse()
+    {
+        return hasThreeOfAKind() && hasPair();
+    }
+    
+    /**
+     * Test if this hand contains a flush.
+     *
+     * @return true if this hand contains a flush
+     */
+    public boolean hasFlush()
+    {
+        int i = 0;  
+        while ( i < suitCounts.length && suitCounts[i] < 5)
+            i++;
+        
+        flushSuit = i;
+        
+        return (i < suitCounts.length);
+    }
+    
+    /**
+     * Test if this hand contains a straight.
+     *
+     * @return true if this hand contains a straight
+     */
+    public boolean hasStraight()
+    {
+        boolean result = false;
+        
+        // check for straights starting with Ace low through Ace high
+        for (int rank = 1; ! result && rank < cardCounts.length - 5; rank++)
+        {
+            if (cardCounts[rank] >= 1)
+                result = (cardCounts[rank+1] >= 1 && cardCounts[rank+2] >= 1 &&
+                          cardCounts[rank+3] >= 1 && cardCounts[rank+4] >= 1);
+        }
+      
+        return result;
+    }
+    
+    /**
+     * Test if this hand contains two pair.
+     * Two pair excludes a full house.
+     *
+     * @return true if this hand contains two pair
+     */
+    public boolean hasTwoPair()
+    {
+        int numPairs = 0;
+        boolean result = false;
+        
+        for (int i = 1; i < cardCounts.length && numPairs < 2; i++)
+        {
+            if (cardCounts[i] == 2)
+            {
+                numPairs++;
+            }
+        }
+        
+        return (numPairs == 2);
+    }
+    
+    /**
+     * Test if this hand contains four-of-a-kind.
+     *
+     * @return true if this hand contains four-of-a-kind
+     */
+    public boolean hasFourOfAKind()
+    {
+        return hasCount(4);
+    }
+        
+    /**
+     * Test if this hand contains three-of-a-kind.
+     * Three-of-a-kind excludes four-of-a-kind.
+     *
+     * @return true if this hand contains three-of-a-kind
+     */
+    public boolean hasThreeOfAKind()
+    {
+        return hasCount(3);
+    }
+    
+    /**
+     * Test if this hand contains a pair.
+     * A pair excludes two pair, three-of-a-kind, and four-of-a-kind.
+     *
+     * @return true if this hand contains a pair
+     */
+    public boolean hasPair()
+    {
+        return hasCount(2);
+    }
+    
+    /**
+     * Test if this hand contains a given number of cards with the same rank.
+     *
+     * @return true if this hand contains exactly the count of cards with the same rank
+     */
+    public boolean hasCount(int count)
+    {
+        int i = 2;   // start with count for 2 and end with count for Ace high
+        while ( i < cardCounts.length && cardCounts[i] != count)
+            i++;
+        return (i < cardCounts.length);
+    }
+    
+    /**
+     * Count cards by rank.
+     * 
+     * Counts occurrences of each card by rank and assigns counts to an
+     * array of integers (indexed from 1-14) representing the 13 suits,
+     * with the ace counted as both index 1 and index 14.
+     * 
+     * @return the array of count values
+     */
+    private int[] countCardsByRank()
+    {
+        int i, j;
+        int[] cardCounts = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                           //   A  2  3  4  5  6  7  8  9  10 J  Q  K  A
+                           
+                           // Note: a local variable is used and returned instead of
+                           // just using the instance variable because the array
+                           // initializer statement can only be used as the initialization
+                           // in a declaration statement. It cannot be used in an
+                           // assignment statement.
+        
+        int numCards = hand.size();
+        for (int card = 0; card < numCards; card++)
+        {
+            cardCounts[hand.get(card).rank()]++;
+        }
+        cardCounts[14] = cardCounts[1]; // copy aces to the end (for Ace-high straight wrapping)
+        
+        return cardCounts;
+    }
+    
+    private int[] countCardsBySuit()
+    {
+        int i, j;
+        int[] suitCounts = {0, 0, 0, 0, 0};
+                           
+                           // Note: a local variable is used and returned instead of
+                           // just using the instance variable because the array
+                           // initializer statement can only be used as the initialization
+                           // in a declaration statement. It cannot be used in an
+                           // assignment statement.
+        
+        int numCards = hand.size();
+        for (int card = 0; card < numCards; card++)
+        {
+            suitCounts[hand.get(card).suit()]++;
+        }
+        
+        return suitCounts;
+    }
+    
+    private int[][] countCardsBySuitRank()
+    {
+        int i, j;
+        int[][] suitRankCounts = { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } ,
+                             { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } ,
+                             { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } ,
+                             { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+                             { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }  };
+                           
+                           // Note: a local variable is used and returned instead of
+                           // just using the instance variable because the array
+                           // initializer statement can only be used as the initialization
+                           // in a declaration statement. It cannot be used in an
+                           // assignment statement.
+        
+        int numCards = hand.size();
+        for (int card = 0; card < numCards; card++)
+        {
+            suitRankCounts[hand.get(card).suit()][hand.get(card).rank()]++;
+        }
+        
+        return suitRankCounts;
+    }
+}
